@@ -8,16 +8,35 @@ if ( defined( 'COOKIE_DOMAIN' ) ) {
 
 // let the site admin page catch the VHOST == 'no'
 $wpdb->dmtable = $wpdb->base_prefix . 'domain_mapping';
-$dm_domain = $wpdb->escape( $_SERVER[ 'HTTP_HOST' ] );
+$dm_domain = ( $_SERVER[ 'HTTP_HOST' ] ); // do not need to worry about escaping since using $wpdb->prepare() 
 
 if( ( $nowww = preg_replace( '|^www\.|', '', $dm_domain ) ) != $dm_domain )
 	$where = $wpdb->prepare( 'domain IN (%s,%s)', $dm_domain, $nowww );
 else
 	$where = $wpdb->prepare( 'domain = %s', $dm_domain );
 
-$wpdb->suppress_errors();
-$domain_mapping_id = $wpdb->get_var( "SELECT blog_id FROM {$wpdb->dmtable} WHERE {$where} ORDER BY CHAR_LENGTH(domain) DESC LIMIT 1" );
-$wpdb->suppress_errors( false );
+
+$domain_mapping_id = false;
+if(function_exists('wp_cache_add_global_groups')){
+	wp_cache_add_global_groups( array('domain-mapping'));
+	$prefix = wp_cache_get('prefix','domain-mapping');
+	if($prefix === false){
+		$prefix = 1;
+		wp_cache_set('prefix',1,'domain-mapping');
+	}
+
+	$prefix = "{$prefix}:".md5($where);
+	$domain_mapping_id = wp_cache_get($prefix,'domain-mapping');
+}
+
+if($domain_mapping_id === false ){
+	$wpdb->suppress_errors();
+	$domain_mapping_id = $wpdb->get_var( "SELECT blog_id FROM {$wpdb->dmtable} WHERE {$where} ORDER BY CHAR_LENGTH(domain) DESC LIMIT 1" );
+	$wpdb->suppress_errors( false );
+	// $domain_mapping_id is now === null - if nothing found which will be cached by object cache
+	wp_cache_set($prefix, $domain_mapping_id, 'domain-mapping');
+}
+
 if( $domain_mapping_id ) {
 	$current_blog = $wpdb->get_row("SELECT * FROM {$wpdb->blogs} WHERE blog_id = '$domain_mapping_id' LIMIT 1");
 	$current_blog->domain = $_SERVER[ 'HTTP_HOST' ];
@@ -34,4 +53,3 @@ if( $domain_mapping_id ) {
 
 	define( 'DOMAIN_MAPPING', 1 );
 }
-?>

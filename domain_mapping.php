@@ -144,6 +144,7 @@ function dm_domains_admin() {
 				}
 			break;
 			case "save":
+				do_action('dm_save_domain');
 				if ( $_POST[ 'blog_id' ] != 0 AND 
 					$_POST[ 'blog_id' ] != 1 AND 
 					null == $wpdb->get_var( $wpdb->prepare( "SELECT domain FROM {$wpdb->dmtable} WHERE blog_id != %d AND domain = %s", $_POST[ 'blog_id' ], $domain ) ) 
@@ -158,6 +159,8 @@ function dm_domains_admin() {
 				}
 			break;
 			case "del":
+				do_action('dm_delete_domain');
+
 				$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->dmtable} WHERE domain = %s", $domain ) );
 				echo "<p><strong>" . __( 'Domain Deleted', 'wordpress-mu-domain-mapping' ) . "</strong></p>";
 			break;
@@ -167,6 +170,8 @@ function dm_domains_admin() {
 			break;
 		}
 		if ( $_POST[ 'action' ] == 'update' ) {
+			do_action('dm_update_domain');
+			
 			if ( preg_match( '|^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$|', $_POST[ 'ipaddress' ] ) )
 				update_site_option( 'dm_ipaddress', $_POST[ 'ipaddress' ] );
 
@@ -189,7 +194,7 @@ function dm_domains_admin() {
 	echo "<p><input type='submit' class='button-secondary' value='" . __( 'Search', 'wordpress-mu-domain-mapping' ) . "' /></p>";
 	echo "</form><br />";
 	dm_edit_domain();
-	$rows = $wpdb->get_results( "SELECT * FROM {$wpdb->dmtable} ORDER BY id DESC LIMIT 0,20" );
+	$rows = $wpdb->get_results( "SELECT * FROM {$wpdb->dmtable} ORDER BY id DESC LIMIT 0,100" );
 	dm_domain_listing( $rows );
 	echo '<p>' . sprintf( __( '<strong>Note:</strong> %s', 'wordpress-mu-domain-mapping' ), dm_idn_warning() ) . "</p>";
 }
@@ -698,8 +703,19 @@ function redirect_to_mapped_domain() {
 	if ( isset( $_POST['customize'] ) && isset( $_POST['theme'] ) && $_POST['customize'] == 'on' )
 		return;
 
+	$prefix = wp_cache_get('prefix','domain-mapping');
+	if($prefix === false){
+		$prefix = 1;
+		wp_cache_set('prefix', $prefix,'domain-mapping');
+	}
+	$prefix = "{$prefix}:{$current_blog->site_id}:{$blog_id}";
+	$url = wp_cache_get("{$prefix}_redirect_to_mapped_domain",'domain-mapping');
+	if($url === false){
+		$url = domain_mapping_siteurl( false );
+		wp_cache_set("{$prefix}_redirect_to_mapped_domain", $url,'domain-mapping');
+	} 
+
 	$protocol = is_ssl() ? 'https://' : 'http://';
-	$url = domain_mapping_siteurl( false );
 	if ( $url && $url != untrailingslashit( $protocol . $current_blog->domain . $current_blog->path ) ) {
 		$redirect = get_site_option( 'dm_301_redirect' ) ? '301' : '302';
 		if ( ( defined( 'VHOST' ) && constant( "VHOST" ) != 'yes' ) || ( defined( 'SUBDOMAIN_INSTALL' ) && constant( 'SUBDOMAIN_INSTALL' ) == false ) ) {
@@ -837,4 +853,27 @@ function dm_idn_warning() {
 	return sprintf( __( 'International Domain Names should be in <a href="%s">punycode</a> format.', 'wordpress-mu-domain-mapping' ), "http://api.webnic.cc/idnconversion.html" );
 }
 
-?>
+/* add domain_mapping as a global group to the object cache, so it can be cached and invalidated when  */
+if ( function_exists( 'wp_cache_add_global_groups' ) ) {
+	wp_cache_add_global_groups( array('domain-mapping'));
+
+}
+
+// update the cache prefix when updating options so that we can 
+// do not load incorrectly cached values, the object cache garbage collection
+// will take care of deleting the old values
+if ( function_exists('wp_cache_incr')) {
+
+	add_action('dm_handle_actions_init','dm_invalidate_cache');
+	add_action('dm_handle_actions_del', 'dm_invalidate_cache');
+	add_action('dm_save_domain', 'dm_invalidate_cache');
+	add_action('dm_delete_domain', 'dm_invalidate_cache');
+	add_action('dm_update_domain', 'dm_invalidate_cache');
+
+	function dm_invalidate_cache(){
+		wp_cache_incr('prefix',1,'domain-mapping');
+	}
+}
+
+
+

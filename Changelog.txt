@@ -1,3 +1,6 @@
+2014-06-24 11:20  jwenerd
+	*  added caching to frequently called queries
+
 2013-03-22 10:54  donncha
 
 	* readme.txt: Bump stable tag and version tested

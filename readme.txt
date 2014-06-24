@@ -1,11 +1,11 @@
-=== WordPress MU Domain Mapping ===
-Contributors: donncha, wpmuguru, automattic
+=== WordPress MU Domain Mapping [fork] ===
+Contributors: donncha, wpmuguru, automattic,jwenerd
 Tags: wordpressmu, domain-mapping, multisite
-Tested up to: 3.9
+Tested up to: 3.9.1
 Stable tag: 0.5.4.3
 Requires at least: 3.1
 
-Map any blog/site on a WordPressMU or WordPress 3.X network to an external domain.
+Map any blog/site on a WordPressMU or WordPress 3.X network to an external domain.  Edits added which improves performance if using a persistent caching plugin such as APC or memcached.
 
 == Description ==
 This plugin allows users of a WordPress MU site or WordPress 3.0 network to map their blog/site to another domain.
