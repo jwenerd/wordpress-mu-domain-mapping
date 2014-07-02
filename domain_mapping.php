@@ -708,10 +708,11 @@ function redirect_to_mapped_domain() {
 		$prefix = 1;
 		wp_cache_set('prefix', $prefix,'domain-mapping');
 	}
-	$prefix = "{$prefix}:{$current_blog->site_id}:{$blog_id}";
+	$prefix = "{$prefix}:{$current_blog->site_id}:{$current_blog->blog_id}";
 	$url = wp_cache_get("{$prefix}_redirect_to_mapped_domain",'domain-mapping');
 	if($url === false){
 		$url = domain_mapping_siteurl( false );
+
 		wp_cache_set("{$prefix}_redirect_to_mapped_domain", $url,'domain-mapping');
 	} 
 
